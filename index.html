@@ -1,1 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Trace Tool - Dimas</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
+        
+        #camera {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
 
+        /* Container centering */
+        #container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #overlay {
+            max-width: 100%; max-height: 100%;
+            opacity: 0.5;
+            /* Kita gunakan transform-origin agar zoom & rotasi tetap di tengah gambar */
+            transform-origin: center; 
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 10px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 85%;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+
+        .slider-group { display: flex; flex-direction: column; }
+        label { color: #00ffcc; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+
+        input[type="range"] { width: 100%; accent-color: #00ffcc; cursor: pointer; }
+        
+        .btn-row { display: flex; gap: 5px; margin-top: 5px; }
+        button, .upload-btn {
+            flex: 1; background: #00ffcc; color: #000;
+            padding: 8px; border: none; border-radius: 5px;
+            text-align: center; font-weight: bold; cursor: pointer;
+            font-size: 11px;
+        }
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+    <video id="camera" autoplay playsinline></video>
+    
+    <div id="container">
+        <img id="overlay" src="" style="display: none;">
+    </div>
+
+    <div class="controls">
+        <label class="upload-btn" for="upload">PILIH GAMBAR</label>
+        <input type="file" id="upload" accept="image/*">
+        
+        <div class="slider-group">
+            <label>Transparansi</label>
+            <input type="range" id="opacity" min="0" max="1" step="0.01" value="0.5">
+        </div>
+
+        <div class="slider-group">
+            <label>Ukuran (Zoom)</label>
+            <input type="range" id="scale" min="0.1" max="4" step="0.01" value="1">
+        </div>
+
+        <div class="slider-group">
+            <label>Posisi Kiri - Kanan</label>
+            <input type="range" id="posX" min="-300" max="300" step="1" value="0">
+        </div>
+
+        <div class="slider-group">
+            <label>Posisi Atas - Bawah</label>
+            <input type="range" id="posY" min="-500" max="500" step="1" value="0">
+        </div>
+        
+        <div class="btn-row">
+            <button onclick="rotateImg()">Putar 90°</button>
+            <button onclick="resetPos()" style="background: #ff4444; color: white;">Reset All</button>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('camera');
+        const overlay = document.getElementById('overlay');
+        const upload = document.getElementById('upload');
+        
+        // Elemen Kontrol
+        const opacity = document.getElementById('opacity');
+        const scale = document.getElementById('scale');
+        const posX = document.getElementById('posX');
+        const posY = document.getElementById('posY');
+        
+        let rotation = 0;
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                alert("Gagal akses kamera: " + err);
+            }
+        }
+
+        upload.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                overlay.src = URL.createObjectURL(file);
+                overlay.style.display = 'block';
+            }
+        };
+
+        // Fungsi Utama untuk Update Tampilan Gambar
+        function updateTransform() {
+            // Urutan penulisan transform sangat penting! 
+            // Translate dulu, lalu Rotate, lalu Scale
+            overlay.style.transform = `translate(${posX.value}px, ${posY.value}px) rotate(${rotation}deg) scale(${scale.value})`;
+        }
+
+        // Listener untuk setiap perubahan input
+        opacity.oninput = () => overlay.style.opacity = opacity.value;
+        scale.oninput = updateTransform;
+        posX.oninput = updateTransform;
+        posY.oninput = updateTransform;
+
+        function rotateImg() {
+            rotation += 90;
+            updateTransform();
+        }
+
+        function resetPos() {
+            rotation = 0;
+            scale.value = 1;
+            posX.value = 0;
+            posY.value = 0;
+            opacity.value = 0.5;
+            overlay.style.opacity = 0.5;
+            updateTransform();
+        }
+
+        startCamera();
+    </script>
+</body>
+</html>
